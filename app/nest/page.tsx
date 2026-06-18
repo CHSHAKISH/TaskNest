@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Search, Filter, Loader2 } from 'lucide-react'
+import { Plus, Search, Filter, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import Navbar from '@/components/layout/navbar'
 import TaskCard from '@/components/tasks/task-card'
 import TaskFormModal from '@/components/tasks/task-form-modal'
@@ -42,6 +42,11 @@ export default function NestPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortDir, setSortDir] = useState('desc')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [adminView, setAdminView] = useState(false)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -54,19 +59,33 @@ export default function NestPage() {
     if (search) params.set('search', search)
     if (statusFilter) params.set('status', statusFilter)
     if (priorityFilter) params.set('priority', priorityFilter)
+    params.set('sortBy', sortBy)
+    params.set('sortDir', sortDir)
+    params.set('page', String(page))
+    params.set('limit', '8')
+    if (adminView) params.set('adminView', 'true')
 
     const res = await fetch(`/api/tasks?${params.toString()}`)
     const data = await res.json()
     setTasks(data.tasks || [])
+    setTotalPages(data.pagination?.totalPages || 1)
     setLoading(false)
-  }, [search, statusFilter, priorityFilter])
+  }, [search, statusFilter, priorityFilter, sortBy, sortDir, page, adminView])
 
   useEffect(() => {
     if (status === 'authenticated') {
-      const timer = setTimeout(fetchTasks, 300) // Debounce search
+      setPage(1) // Reset to page 1 when filters change
+      const timer = setTimeout(fetchTasks, 300)
       return () => clearTimeout(timer)
     }
-  }, [status, fetchTasks])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, search, statusFilter, priorityFilter, sortBy, sortDir, adminView])
+
+  // Separate effect for page changes (no debounce needed)
+  useEffect(() => {
+    if (status === 'authenticated') fetchTasks()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type })
@@ -196,16 +215,10 @@ export default function NestPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          style={{
-            display: 'flex',
-            gap: '12px',
-            marginBottom: '24px',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
+          style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}
         >
           {/* Search */}
-          <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
             <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               id="task-search"
@@ -248,6 +261,44 @@ export default function NestPage() {
             <option value="MEDIUM">Medium</option>
             <option value="HIGH">High</option>
           </select>
+
+          {/* Sort */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ArrowUpDown size={13} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+            <select
+              id="sort-by"
+              value={`${sortBy}-${sortDir}`}
+              onChange={(e) => {
+                const [by, dir] = e.target.value.split('-')
+                setSortBy(by)
+                setSortDir(dir)
+              }}
+              className="input"
+              style={{ paddingLeft: '30px', paddingRight: '12px', width: 'auto', cursor: 'pointer' }}
+            >
+              <option value="createdAt-desc">Newest first</option>
+              <option value="createdAt-asc">Oldest first</option>
+              <option value="dueDate-asc">Due date ↑</option>
+              <option value="dueDate-desc">Due date ↓</option>
+              <option value="priority-desc">Priority (High→Low)</option>
+              <option value="priority-asc">Priority (Low→High)</option>
+            </select>
+          </div>
+
+          {/* Admin: View All toggle */}
+          {session?.user?.role === 'ADMIN' && (
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setAdminView(v => !v)}
+              id="admin-view-toggle"
+              className={adminView ? 'btn btn-primary' : 'btn btn-ghost'}
+              style={{ fontSize: '0.78rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+            >
+              <Eye size={13} />
+              {adminView ? 'All Acorns' : 'My Acorns'}
+            </motion.button>
+          )}
         </motion.div>
 
         {/* Task list */}
@@ -261,20 +312,59 @@ export default function NestPage() {
         ) : tasks.length === 0 ? (
           <EmptyNest onGatherAcorn={() => setShowModal(true)} />
         ) : (
-          <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <AnimatePresence mode="popLayout">
-              {tasks.map((task, index) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  index={index}
-                  onComplete={handleComplete}
-                  onEdit={(t) => { setEditingTask(t); setShowModal(true) }}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <>
+            <motion.div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <AnimatePresence mode="popLayout">
+                {tasks.map((task, index) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    index={index}
+                    onComplete={handleComplete}
+                    onEdit={(t) => { setEditingTask(t); setShowModal(true) }}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '28px' }}
+              >
+                <motion.button
+                  id="prev-page"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="btn btn-ghost"
+                  style={{ padding: '8px 14px', opacity: page === 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <ChevronLeft size={15} /> Prev
+                </motion.button>
+
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: '80px', textAlign: 'center' }}>
+                  Page {page} of {totalPages}
+                </span>
+
+                <motion.button
+                  id="next-page"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="btn btn-ghost"
+                  style={{ padding: '8px 14px', opacity: page === totalPages ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  Next <ChevronRight size={15} />
+                </motion.button>
+              </motion.div>
+            )}
+          </>
         )}
       </main>
 

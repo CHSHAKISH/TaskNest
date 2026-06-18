@@ -55,7 +55,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    // Handle Query Parameters for Filtering and Pagination
+    // Handle Query Parameters for Filtering, Pagination, and Sorting
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
@@ -63,11 +63,14 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
+    const sortBy = searchParams.get('sortBy') || 'createdAt'   // createdAt | dueDate | priority
+    const sortDir = searchParams.get('sortDir') || 'desc'       // asc | desc
+    const adminView = searchParams.get('adminView') === 'true' && session.user.role === 'ADMIN'
 
     // Build the query "where" clause safely
-    const whereClause: any = {
-      userId: session.user.id, // ONLY return tasks belonging to this user
-    }
+    const whereClause: any = adminView
+      ? {}  // Admin sees all tasks
+      : { userId: session.user.id }  // Users only see their own
 
     if (status) whereClause.status = status
     if (priority) whereClause.priority = priority
@@ -78,13 +81,28 @@ export async function GET(req: Request) {
       }
     }
 
+    // Build the sort/order clause
+    let orderBy: any = { createdAt: sortDir }
+    if (sortBy === 'dueDate') orderBy = { dueDate: sortDir }
+    if (sortBy === 'priority') {
+      // Map enum priority to a custom sort via raw field ordering
+      orderBy = [
+        { priority: sortDir === 'desc' ? 'desc' : 'asc' },
+        { createdAt: 'desc' },
+      ]
+    }
+
     // Fetch tasks + total count for pagination
     const [tasks, total] = await Promise.all([
       prisma.task.findMany({
         where: whereClause,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip,
         take: limit,
+        include: {
+          attachments: true,
+          user: adminView ? { select: { name: true, email: true } } : false,
+        },
       }),
       prisma.task.count({ where: whereClause }),
     ])

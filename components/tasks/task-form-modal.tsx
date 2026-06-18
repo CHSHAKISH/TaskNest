@@ -1,8 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { X, Loader2, CalendarDays, Flag, AlignLeft } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Loader2, CalendarDays, Flag, AlignLeft, Paperclip, FileText, XCircle, Upload } from 'lucide-react'
+
+interface Attachment {
+  id: string
+  filename: string
+  url: string
+}
 
 interface Task {
   id: string
@@ -12,6 +18,7 @@ interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH'
   dueDate?: string
   createdAt: string
+  attachments?: Attachment[]
 }
 
 interface TaskFormModalProps {
@@ -33,12 +40,34 @@ export default function TaskFormModal({ task, onClose, onSaved }: TaskFormModalP
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // File attachment state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>(task?.attachments || [])
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   // Close on Escape key
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
+
+  const handleFileSelect = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File too large. Max size is 5MB.')
+      return
+    }
+    setSelectedFile(file)
+    setError('')
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileSelect(file)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,13 +92,30 @@ export default function TaskFormModal({ task, onClose, onSaved }: TaskFormModalP
       body: JSON.stringify(payload),
     })
 
-    setLoading(false)
-
     if (!res.ok) {
+      setLoading(false)
       setError('🌰 Something went wrong. Please try again.')
-    } else {
-      onSaved()
+      return
     }
+
+    const savedTask = await res.json()
+
+    // Upload attachment if a file was selected
+    if (selectedFile && savedTask.id) {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('taskId', savedTask.id)
+
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (!uploadRes.ok) {
+        setError('Task saved, but file upload failed. Please try again.')
+        setLoading(false)
+        return
+      }
+    }
+
+    setLoading(false)
+    onSaved()
   }
 
   return (
@@ -102,6 +148,7 @@ export default function TaskFormModal({ task, onClose, onSaved }: TaskFormModalP
           justifyContent: 'center',
           padding: '24px',
           pointerEvents: 'none',
+          overflowY: 'auto',
         }}
       >
         <div
@@ -112,6 +159,8 @@ export default function TaskFormModal({ task, onClose, onSaved }: TaskFormModalP
             padding: '28px',
             pointerEvents: 'auto',
             boxShadow: 'var(--shadow-lg)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
           }}
         >
           {/* Header */}
@@ -211,6 +260,78 @@ export default function TaskFormModal({ task, onClose, onSaved }: TaskFormModalP
                 onChange={(e) => setDueDate(e.target.value)}
                 className="input"
               />
+            </div>
+
+            {/* File Attachment */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Paperclip size={12} /> Attachment (optional, max 5MB)</span>
+              </label>
+
+              {/* Drag & Drop Zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${isDragOver ? 'var(--accent-primary)' : 'var(--border)'}`,
+                  borderRadius: 'var(--radius-md)',
+                  padding: '16px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: isDragOver ? 'rgba(45,138,45,0.05)' : 'transparent',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  id="task-attachment"
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }}
+                />
+                {selectedFile ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <FileText size={16} color="var(--accent-primary)" />
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 500 }}>{selectedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedFile(null) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--accent-danger)', display: 'flex' }}
+                    >
+                      <XCircle size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <Upload size={18} color="var(--text-muted)" style={{ margin: '0 auto 6px' }} />
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Drag & drop or <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>click to browse</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Existing attachments (on edit) */}
+              <AnimatePresence>
+                {uploadedAttachments.length > 0 && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {uploadedAttachments.map((att) => (
+                      <a
+                        key={att.id}
+                        href={att.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--accent-primary)', textDecoration: 'none', padding: '4px 6px', borderRadius: 'var(--radius-sm)', background: 'rgba(45,138,45,0.06)' }}
+                      >
+                        <FileText size={12} />
+                        {att.filename}
+                      </a>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Error */}

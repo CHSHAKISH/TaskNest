@@ -52,3 +52,7 @@ claude.md
 *.sln
 
 /app/generated/prisma
+
+# User uploaded files (keep the folder, not the content)
+/public/uploads/*
+!/public/uploads/.gitkeep
