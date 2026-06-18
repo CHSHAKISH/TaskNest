@@ -22,8 +22,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     return NextResponse.json(task)
-  } catch (error) {
-    return NextResponse.json({ message: 'Failed to fetch task' }, { status: 500 })
+  } catch {
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -43,7 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const result = updateTaskSchema.safeParse(body)
     
     if (!result.success) {
-      return NextResponse.json({ message: 'Invalid data', errors: result.error.errors }, { status: 400 })
+      return NextResponse.json({ message: 'Invalid data', errors: result.error.issues }, { status: 400 })
     }
 
     const updatedTask = await prisma.task.update({

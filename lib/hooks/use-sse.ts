@@ -23,55 +23,56 @@ export function useSSE(handlers: SSEHandlers) {
   const eventSourceRef = useRef<EventSource | null>(null)
   const handlersRef = useRef(handlers)
 
-  // Keep handlers ref fresh without re-creating the EventSource
   useEffect(() => {
     handlersRef.current = handlers
   }, [handlers])
 
-  const connect = useCallback(() => {
-    if (eventSourceRef.current) return // already connected
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout
 
-    const es = new EventSource('/api/sse')
-    eventSourceRef.current = es
+    const connect = () => {
+      if (eventSourceRef.current) return
 
-    es.onmessage = (event) => {
-      try {
-        const data: SSEEvent = JSON.parse(event.data)
-        const h = handlersRef.current
+      const es = new EventSource('/api/sse')
+      eventSourceRef.current = es
 
-        switch (data.type) {
-          case 'connected':
-            h.onConnected?.()
-            break
-          case 'TASK_CREATED':
-            h.onTaskCreated?.(data.payload)
-            break
-          case 'TASK_UPDATED':
-            h.onTaskUpdated?.(data.payload)
-            break
-          case 'TASK_DELETED':
-            h.onTaskDeleted?.(data.payload as { id: string })
-            break
+      es.onmessage = (event) => {
+        try {
+          const data: SSEEvent = JSON.parse(event.data)
+          const h = handlersRef.current
+
+          switch (data.type) {
+            case 'connected':
+              h.onConnected?.()
+              break
+            case 'TASK_CREATED':
+              h.onTaskCreated?.(data.payload)
+              break
+            case 'TASK_UPDATED':
+              h.onTaskUpdated?.(data.payload)
+              break
+            case 'TASK_DELETED':
+              h.onTaskDeleted?.(data.payload as { id: string })
+              break
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore malformed messages
+      }
+
+      es.onerror = () => {
+        es.close()
+        eventSourceRef.current = null
+        timeoutId = setTimeout(connect, 3000)
       }
     }
 
-    es.onerror = () => {
-      // Auto-reconnect after 3 seconds on connection drop
-      es.close()
-      eventSourceRef.current = null
-      setTimeout(connect, 3000)
-    }
-  }, [])
-
-  useEffect(() => {
     connect()
 
     return () => {
+      clearTimeout(timeoutId)
       eventSourceRef.current?.close()
       eventSourceRef.current = null
     }
-  }, [connect])
+  }, [])
 }

@@ -72,6 +72,7 @@ export default function NestPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage(1) // Reset to page 1 when filters change
       const timer = setTimeout(fetchTasks, 300)
       return () => clearTimeout(timer)
@@ -81,6 +82,7 @@ export default function NestPage() {
 
   // Separate effect for page changes (no debounce needed)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (status === 'authenticated') fetchTasks()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])

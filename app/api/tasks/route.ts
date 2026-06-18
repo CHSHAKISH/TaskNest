@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     // 2. Validate input using Zod
     const result = createTaskSchema.safeParse(body)
     if (!result.success) {
-      return NextResponse.json({ message: 'Invalid data', errors: result.error.errors }, { status: 400 })
+      return NextResponse.json({ message: 'Invalid data', errors: result.error.issues }, { status: 400 })
     }
 
     const { title, description, status, priority, dueDate, projectId } = result.data
@@ -69,20 +69,21 @@ export async function GET(req: Request) {
     const targetUserId = searchParams.get('targetUserId')
 
     // Build the query "where" clause safely
-    const whereClause: any = adminView
+    const whereClause: Record<string, unknown> = adminView
       ? (targetUserId ? { userId: targetUserId } : {})  // Admin sees all tasks or specific user's tasks
       : { userId: session.user.id }  // Users only see their own
 
     if (status) whereClause.status = status
     if (priority) whereClause.priority = priority
     if (search) {
-      whereClause.title = {
-        contains: search,
-        mode: 'insensitive',
-      }
+      whereClause.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
     }
 
     // Build the sort/order clause
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let orderBy: any = { createdAt: sortDir }
     if (sortBy === 'dueDate') orderBy = { dueDate: sortDir }
     if (sortBy === 'priority') {

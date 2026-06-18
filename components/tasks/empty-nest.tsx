@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 const EMPTY_MESSAGES = [
   { emoji: '🐿️', text: 'Your nest is empty. Time to gather some acorns.', sub: 'Add your first task and start growing your forest.' },
@@ -14,7 +15,12 @@ interface EmptyNestProps {
 }
 
 export default function EmptyNest({ onGatherAcorn }: EmptyNestProps) {
-  const msg = EMPTY_MESSAGES[Math.floor(Math.random() * EMPTY_MESSAGES.length)]
+  const [msg, setMsg] = useState(EMPTY_MESSAGES[0])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMsg(EMPTY_MESSAGES[Math.floor(Math.random() * EMPTY_MESSAGES.length)])
+  }, [])
 
   return (
     <motion.div

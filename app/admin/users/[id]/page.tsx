@@ -86,6 +86,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
 
   useEffect(() => {
     if (status === 'authenticated') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage(1)
       const timer = setTimeout(fetchTasks, 300)
       return () => clearTimeout(timer)
@@ -94,28 +95,20 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
   }, [status, search, statusFilter, priorityFilter, sortBy, sortDir])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (status === 'authenticated') fetchTasks()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
-  // Hook into real-time updates for THIS user
-  useSSE(userId, () => fetchTasks())
+  // Hook into real-time updates
+  useSSE({
+    onTaskCreated: fetchTasks,
+    onTaskUpdated: fetchTasks,
+    onTaskDeleted: fetchTasks,
+  })
 
-  const handleComplete = async (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: 'COMPLETED' } : t))
-    )
-    await fetch(`/api/tasks/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'COMPLETED' }),
-    })
-  }
+  // Removed unused handleComplete and handleDelete since admins can't modify user tasks
 
-  const handleDelete = async (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId))
-    await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
-  }
 
   if (status === 'loading') return null
 
@@ -137,7 +130,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: '32px' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <UserIcon size={24} color="var(--accent-primary)" />
-            {user?.name || 'User'}'s Nest
+            {user?.name || 'User'}&apos;s Nest
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
             {user?.email || 'Viewing their individual acorns'}

@@ -82,7 +82,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session?.user || session.user.role !== 'ADMIN') {
       router.push('/nest')
       return
     }

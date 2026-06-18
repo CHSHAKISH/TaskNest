@@ -42,7 +42,7 @@ export default function TaskFormModal({ task, onClose, onSaved }: TaskFormModalP
 
   // File attachment state
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>(task?.attachments || [])
+  const [uploadedAttachments] = useState<Attachment[]>(task?.attachments || [])
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 

@@ -112,7 +112,7 @@ export default function TaskHistoryModal({ taskId, taskTitle, onClose }: TaskHis
                 {/* Vertical Line */}
                 <div style={{ position: 'absolute', left: '16px', top: '10px', bottom: '10px', width: '2px', background: 'var(--border)' }} />
                 
-                {history.map((log, index) => (
+                {history.map((log) => (
                   <div key={log.id} style={{ display: 'flex', gap: '16px', position: 'relative', zIndex: 1 }}>
                     <div style={{ 
                       width: '34px', height: '34px', borderRadius: '50%', background: 'var(--surface-card)', 
