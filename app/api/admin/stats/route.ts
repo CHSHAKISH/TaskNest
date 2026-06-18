@@ -36,6 +36,10 @@ export async function GET() {
     prisma.user.findMany({
       include: {
         _count: { select: { tasks: true } },
+        tasks: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, title: true, status: true, priority: true }
+        }
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -57,6 +61,7 @@ export async function GET() {
       email: u.email,
       role: u.role,
       taskCount: u._count.tasks,
+      tasks: u.tasks,
       createdAt: u.createdAt,
     })),
   })

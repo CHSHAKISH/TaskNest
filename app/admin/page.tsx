@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Users, CheckSquare, Clock, Flame, Activity, Shield, TreePine } from 'lucide-react'
+import { Users, CheckSquare, Clock, Flame, Activity, Shield, TreePine, ChevronRight } from 'lucide-react'
 import Navbar from '@/components/layout/navbar'
 
 interface AdminStats {
@@ -191,24 +191,34 @@ export default function AdminDashboard() {
               <Users size={16} color="var(--accent-primary)" />
               Squirrels ({users.length})
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
               {users.map((user) => (
-                <div key={user.id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--surface-hover)',
-                  gap: '12px',
-                }}>
+                <motion.div
+                  key={user.id}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => router.push(`/admin/users/${user.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--surface-hover)',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    border: '1px solid transparent',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {user.name || 'Unnamed Squirrel'}
                     </p>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
                       {user.email}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                     <span style={{
                       fontSize: '0.7rem', padding: '2px 8px',
                       borderRadius: 'var(--radius-full)',
@@ -218,11 +228,12 @@ export default function AdminDashboard() {
                     }}>
                       {user.role}
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600, minWidth: '40px', textAlign: 'right' }}>
                       🌰 {user.taskCount}
                     </span>
+                    <ChevronRight size={16} color="var(--text-muted)" style={{ marginLeft: '4px' }} />
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>

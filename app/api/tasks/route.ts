@@ -66,10 +66,11 @@ export async function GET(req: Request) {
     const sortBy = searchParams.get('sortBy') || 'createdAt'   // createdAt | dueDate | priority
     const sortDir = searchParams.get('sortDir') || 'desc'       // asc | desc
     const adminView = searchParams.get('adminView') === 'true' && session.user.role === 'ADMIN'
+    const targetUserId = searchParams.get('targetUserId')
 
     // Build the query "where" clause safely
     const whereClause: any = adminView
-      ? {}  // Admin sees all tasks
+      ? (targetUserId ? { userId: targetUserId } : {})  // Admin sees all tasks or specific user's tasks
       : { userId: session.user.id }  // Users only see their own
 
     if (status) whereClause.status = status

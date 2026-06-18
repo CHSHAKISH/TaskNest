@@ -54,8 +54,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       },
     })
 
+    // Generate detailed change log
+    const changes: string[] = []
+    if (existingTask.title !== updatedTask.title) changes.push('Updated title')
+    if (existingTask.status !== updatedTask.status) changes.push(`Status: ${existingTask.status} → ${updatedTask.status}`)
+    if (existingTask.priority !== updatedTask.priority) changes.push(`Priority: ${existingTask.priority} → ${updatedTask.priority}`)
+    
+    let details = changes.length > 0 ? changes.join(' | ') : 'Updated acorn details'
+    if (result.data.status === 'COMPLETED' && existingTask.status !== 'COMPLETED') {
+      details = '🎉 Completed acorn'
+    }
+
     // Log Activity and broadcast real-time
-    const details = result.data.status === 'COMPLETED' ? 'Completed acorn' : 'Updated acorn details'
     await logActivity(session.user.id, 'UPDATED_TASK', 'TASK', updatedTask.id, details)
     broadcastToUser(session.user.id, 'TASK_UPDATED', updatedTask)
 

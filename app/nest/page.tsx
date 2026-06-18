@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Search, Filter, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { Plus, Search, Filter, Loader2, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import Navbar from '@/components/layout/navbar'
 import TaskCard from '@/components/tasks/task-card'
 import TaskFormModal from '@/components/tasks/task-form-modal'
@@ -46,7 +46,6 @@ export default function NestPage() {
   const [sortDir, setSortDir] = useState('desc')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [adminView, setAdminView] = useState(false)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -63,14 +62,13 @@ export default function NestPage() {
     params.set('sortDir', sortDir)
     params.set('page', String(page))
     params.set('limit', '8')
-    if (adminView) params.set('adminView', 'true')
 
     const res = await fetch(`/api/tasks?${params.toString()}`)
     const data = await res.json()
     setTasks(data.tasks || [])
     setTotalPages(data.pagination?.totalPages || 1)
     setLoading(false)
-  }, [search, statusFilter, priorityFilter, sortBy, sortDir, page, adminView])
+  }, [search, statusFilter, priorityFilter, sortBy, sortDir, page])
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -79,7 +77,7 @@ export default function NestPage() {
       return () => clearTimeout(timer)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, search, statusFilter, priorityFilter, sortBy, sortDir, adminView])
+  }, [status, search, statusFilter, priorityFilter, sortBy, sortDir])
 
   // Separate effect for page changes (no debounce needed)
   useEffect(() => {
@@ -284,21 +282,6 @@ export default function NestPage() {
               <option value="priority-asc">Priority (Low→High)</option>
             </select>
           </div>
-
-          {/* Admin: View All toggle */}
-          {session?.user?.role === 'ADMIN' && (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setAdminView(v => !v)}
-              id="admin-view-toggle"
-              className={adminView ? 'btn btn-primary' : 'btn btn-ghost'}
-              style={{ fontSize: '0.78rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-            >
-              <Eye size={13} />
-              {adminView ? 'All Acorns' : 'My Acorns'}
-            </motion.button>
-          )}
         </motion.div>
 
         {/* Task list */}
