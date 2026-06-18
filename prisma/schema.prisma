@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -------------------------------------------------------------------
+// ENUMS (Predefined lists of values)
+// -------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// -------------------------------------------------------------------
+// MODELS (Database Tables)
+// -------------------------------------------------------------------
+
+// The User model represents our app's users.
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  role          Role      @default(USER)
+  
+  // Relationships
+  tasks         Task[]
+  projects      Project[]
+  activityLogs  ActivityLog[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// The Project model represents the "Trees" in our forest metaphor.
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  
+  // Relationships
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// The Task model represents the "Acorns" in our metaphor.
+model Task {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus    @default(PENDING)
+  priority    TaskPriority  @default(MEDIUM)
+  dueDate     DateTime?
+  
+  // Relationships
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId   String?
+  project     Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
+  attachments TaskAttachment[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Stores file uploads (attachments) linked to specific tasks
+model TaskAttachment {
+  id        String   @id @default(uuid())
+  filename  String
+  url       String
+  
+  // Relationships
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// Stores the history of actions for the Activity Log feature
+model ActivityLog {
+  id         String   @id @default(uuid())
+  action     String   // e.g., "CREATED_TASK", "COMPLETED_TASK"
+  entityType String   // e.g., "TASK", "PROJECT"
+  entityId   String   // ID of the task or project
+  details    String?  // Optional extra info (e.g., "Status changed from PENDING to COMPLETED")
+  
+  // Relationships
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+}
