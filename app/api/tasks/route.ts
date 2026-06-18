@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createTaskSchema } from '@/lib/validations/task'
 import { logActivity } from '@/lib/activity-logger'
+import { broadcastToUser } from '@/app/api/sse/route'
 
 export async function POST(req: Request) {
   try {
@@ -36,8 +37,9 @@ export async function POST(req: Request) {
       },
     })
 
-    // 4. Log the activity for the Bonus Feature!
+    // 4. Log the activity and broadcast the real-time update
     await logActivity(session.user.id, 'CREATED_TASK', 'TASK', task.id, `Created acorn: ${task.title}`)
+    broadcastToUser(session.user.id, 'TASK_CREATED', task)
 
     return NextResponse.json(task, { status: 201 })
   } catch (error) {

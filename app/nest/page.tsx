@@ -9,6 +9,8 @@ import Navbar from '@/components/layout/navbar'
 import TaskCard from '@/components/tasks/task-card'
 import TaskFormModal from '@/components/tasks/task-form-modal'
 import EmptyNest from '@/components/tasks/empty-nest'
+import { useSSE } from '@/lib/hooks/use-sse'
+import Link from 'next/link'
 
 interface Task {
   id: string
@@ -70,6 +72,22 @@ export default function NestPage() {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
   }
+
+  // SSE: Real-time task updates from the server
+  useSSE({
+    onTaskCreated: (task) => {
+      setTasks(prev => {
+        if (prev.some(t => t.id === (task as Task).id)) return prev
+        return [task as Task, ...prev]
+      })
+    },
+    onTaskUpdated: (task) => {
+      setTasks(prev => prev.map(t => t.id === (task as Task).id ? task as Task : t))
+    },
+    onTaskDeleted: ({ id }) => {
+      setTasks(prev => prev.filter(t => t.id !== id))
+    },
+  })
 
   // OPTIMISTIC UI: Complete a task instantly
   const handleComplete = async (taskId: string) => {
@@ -146,16 +164,30 @@ export default function NestPage() {
               </p>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => { setEditingTask(null); setShowModal(true) }}
-              className="btn btn-primary btn-glow"
-              style={{ gap: '8px', padding: '12px 20px' }}
-            >
-              <Plus size={16} />
-              Gather Acorn
-            </motion.button>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {session?.user?.role === 'ADMIN' && (
+                <Link href="/admin" style={{ textDecoration: 'none' }}>
+                  <motion.span
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="btn btn-ghost"
+                    style={{ fontSize: '0.82rem', padding: '9px 16px' }}
+                  >
+                    🌳 Forest HQ
+                  </motion.span>
+                </Link>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => { setEditingTask(null); setShowModal(true) }}
+                className="btn btn-primary btn-glow"
+                style={{ gap: '8px', padding: '12px 20px' }}
+              >
+                <Plus size={16} />
+                Gather Acorn
+              </motion.button>
+            </div>
           </div>
         </motion.div>
 
