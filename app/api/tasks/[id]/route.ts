@@ -5,13 +5,14 @@ import { authOptions } from '@/lib/auth'
 import { updateTaskSchema } from '@/lib/validations/task'
 import { logActivity } from '@/lib/activity-logger'
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
     const task = await prisma.task.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { attachments: true },
     })
 
@@ -25,13 +26,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
     // Verify ownership
-    const existingTask = await prisma.task.findUnique({ where: { id: params.id } })
+    const existingTask = await prisma.task.findUnique({ where: { id } })
     if (!existingTask || existingTask.userId !== session.user.id) {
       return NextResponse.json({ message: 'Task not found' }, { status: 404 })
     }
@@ -44,7 +46,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const updatedTask = await prisma.task.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...result.data,
         dueDate: result.data.dueDate ? new Date(result.data.dueDate) : undefined,
@@ -61,19 +63,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
     // Verify ownership
-    const existingTask = await prisma.task.findUnique({ where: { id: params.id } })
+    const existingTask = await prisma.task.findUnique({ where: { id } })
     if (!existingTask || existingTask.userId !== session.user.id) {
       return NextResponse.json({ message: 'Task not found' }, { status: 404 })
     }
 
     await prisma.task.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Log Activity
